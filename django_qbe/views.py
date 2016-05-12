@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import json
 
-from django.db.models import get_apps
 from django.contrib.auth.decorators import user_passes_test
 from django.core.urlresolvers import reverse
+from django.db import connection
+from django.db.models import get_apps
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
@@ -19,7 +20,8 @@ from django_qbe.settings import (
     QBE_SHOW_ROW_NUMBER,
     QBE_ADMIN,
     QBE_ALIASES,
-    QBE_SAVED_QUERIES
+    QBE_SAVED_QUERIES,
+    QBE_EXPLAIN,
 )
 qbe_access_for = QBE_ACCESS_FOR
 
@@ -62,8 +64,15 @@ def qbe_form(request, query_hash=None):
         'query_hash': query_hash,
         'savedqueries_installed': QBE_SAVED_QUERIES,
         'aliases_enabled': QBE_ALIASES,
-        'group_by_enabled': QBE_GROUP_BY
+        'group_by_enabled': QBE_GROUP_BY,
+        'explain_enabled': QBE_EXPLAIN,
     }
+
+    if QBE_EXPLAIN and 'explain' in formset.data:
+        explain = formset.data['explain']
+        context['explain_result'] = explain
+        del formset.data['explain']
+
     return render(request, 'qbe.html', context)
 
 
@@ -74,6 +83,24 @@ def qbe_proxy(request):
         db_alias = request.session.get("qbe_database", "default")
         formset = QueryByExampleFormSet(data=data, using=db_alias)
         if formset.is_valid():
+
+            if QBE_EXPLAIN:
+                if 'explain' not in formset.data:
+                    sql = formset.get_raw_query(limit=None, offset=None,add_extra_ids=None)
+                    cursor = connection.cursor()
+                    cursor.execute("EXPLAIN %s" % sql)
+                    rows = cursor.fetchall()
+
+                    formset.data['explain'] = (sql, '\n'.join(row[0] for row in rows))
+
+                    pickled = pickle_encode(data)
+                    query_hash = get_query_hash(pickled)
+                    query_key = "qbe_query_%s" % query_hash
+                    request.session[query_key] = data
+                    return redirect("qbe_form", query_hash=query_hash)
+                else:
+                    del formset.data['explain']
+
             pickled = pickle_encode(data)
             query_hash = get_query_hash(pickled)
             query_key = "qbe_query_%s" % query_hash
