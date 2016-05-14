@@ -169,4 +169,5 @@ input.qbeCheckModels {
 
 div#explain_result {
     float: right;
+    width: 60%;
 }
