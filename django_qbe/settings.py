@@ -23,3 +23,6 @@ QBE_SHOW_ROW_NUMBER = getattr(settings, "QBE_SHOW_ROW_NUMBER", True)
 
 # saved queries
 QBE_SAVED_QUERIES = 'django_qbe.savedqueries' in settings.INSTALLED_APPS
+
+# explain
+QBE_EXPLAIN = getattr(settings, "QBE_EXPLAIN", False)
