@@ -95,9 +95,9 @@ def qbe_proxy(request):
 
             if QBE_EXPLAIN:
                 if 'explain' not in formset.data:
-                    sql = formset.get_raw_query(limit=None, offset=None,add_extra_ids=None)
+                    sql = formset.get_raw_query(limit=None, offset=None, add_extra_ids=None)
                     cursor = connection.cursor()
-                    cursor.execute("EXPLAIN %s" % sql)
+                    cursor.execute("EXPLAIN %s" % sql, tuple(formset._params))
                     rows = cursor.fetchall()
 
                     formset.data['explain'] = (sql, '\n'.join(row[0] for row in rows))
